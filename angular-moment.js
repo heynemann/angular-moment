@@ -26,10 +26,11 @@
 	 * Common configuration of the angularMoment module
 	 */
 		.constant('angularMomentConfig', {
-			timezone: '' // e.g. 'Europe/London'
+			timezone: '', // e.g. 'Europe/London'
+			splitUnit: false
 		})
 		.constant('amTimeAgoConfig', { withoutSuffix: false})
-		.directive('amTimeAgo', ['$window', 'amTimeAgoConfig', function ($window, amTimeAgoConfig) {
+		.directive('amTimeAgo', ['$window', 'amTimeAgoConfig', 'angularMomentConfig',  function ($window, amTimeAgoConfig, angularMomentConfig) {
 
 			return function (scope, element, attr) {
 				var activeTimeout = null;
@@ -45,7 +46,35 @@
 				}
 
 				function updateTime(momentInstance) {
-					element.text(momentInstance.fromNow(withoutSuffix));
+					var value = momentInstance.fromNow(withoutSuffix);
+
+					if (angularMomentConfig.splitUnit) {
+						var beforeUnit = true,
+							textBefore = [],
+							textAfter = [],
+							text = [];
+
+						value = value.split(' ');
+						for (var i=0; i < value.length; ++i) {
+							if (isNaN(parseInt(value[i], 10))) {
+								if (beforeUnit) {
+									textBefore.push(value[i]);
+								} else {
+									textAfter.push(value[i]);
+								}
+							} else {
+								text.push(value[i]);
+								beforeUnit = false;
+							}
+						}
+
+						textBefore = textBefore.length == 0 ? '' : '<span class="before unit">' + textBefore.join(' ') + '</span> ';
+						text = textBefore + '<span class="value">' + text.join(' ') + '</span> <span class="unit">' + textAfter.join(' ') + '</span>';
+						$(element).html(text);
+					} else {
+						$(element).html(value);
+					}
+
 					var howOld = $window.moment().diff(momentInstance, 'minute');
 					var secondsUntilUpdate = 3600;
 					if (howOld < 1) {
